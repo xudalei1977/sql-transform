@@ -14,7 +14,7 @@ object CreateTableSQL {
 
   def main(args: Array[String]): Unit = {
 
-    logger.info("start the CreateTableSQL script transform ...")
+    logger.info("start the create table sql script transform ...")
     val params = DBConfig.parseConfig(CreateTableSQL, args)
     println(s"params := ${params.toString}")
     val file = new File(params.fileName)
@@ -22,17 +22,17 @@ object CreateTableSQL {
 
     // get all tables in the database to migrate.
     val dbEngine:DBEngineUtil = params.dbEngine match {
-      case "mysql" =>
-        new MySQLUtil()
-      case "pg" =>
-        new PostgreSQLUtil()
+      case "adb-mysql" =>
+        new ADBMySQLUtil()
+      case "adb-pg" =>
+        new ADBPostgreSQLUtil()
       case _ =>
-        new MySQLUtil()
+        new ADBMySQLUtil()
     }
 
     val sql:String = params.dbEngine match {
-      case "mysql" => "show tables"
-      case "pg" => s"select tablename from pg_tables where schemaname = '${params.schema}'"
+      case "adb-mysql" => "show tables"
+      case "adb-pg" => s"select tablename from pg_tables where schemaname = '${params.schema}'"
       case _ => "show tables"
     }
 
@@ -66,11 +66,11 @@ object CreateTableSQL {
 
 //export CLASSPATH=./sql-transform-1.0-SNAPSHOT-jar-with-dependencies.jar:./scopt_2.12-4.0.0-RC2.jar
 //scala com.aws.analytics.CreateTableSQL \
-//  -f /home/ec2-user/create_table_redshift.sql -g adb_mysql \
+//  -f /home/ec2-user/create_table_redshift.sql -g adb-mysql \
 //  -h emr-workshop-mysql8.chl9yxs6uftz.us-east-1.rds.amazonaws.com \
-//  -p 3306 -d dev -u admin -w HCserv1ce
+//  -p 3306 -d dev -u admin -w Password****
 
 //scala com.aws.analytics.CreateTableSQL \
-//  -f /home/ec2-user/create_table_redshift.sql -g adb_pg \
-//  -h gp-bp146am6bcf7tht8ro-master.gpdb.rds.aliyuncs.com \
-//  -p 5432 -d dev -s public -u postgres -w HCserv1ce
+//  -f /home/ec2-user/create_table_redshift.sql -g adb-pg \
+//  -h gp-bp1t4m428azo2zxk0o-master.gpdb.rds.aliyuncs.com \
+//  -p 5432 -d adb_sampledata_tpch -s public -u postgres -w Password****

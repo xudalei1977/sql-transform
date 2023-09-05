@@ -12,4 +12,6 @@ private[analytics] trait DBEngineUtil{
   def getConnection(conf: DBConfig): Connection
   def getValidFieldNames(mysqlConfig: DBConfig, internalConfig: InternalConfig)(implicit crashOnInvalidType: Boolean): TableDetails
   def transferDateFunction(sql:String): String
+  def transferCharFunction(sql:String): String
+
 }

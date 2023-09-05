@@ -14,26 +14,30 @@ object CommonSQL {
 
   def main(args: Array[String]): Unit = {
 
-    logger.info("start the ETLJobSQL script transform ...")
-    val params = DBConfig.parseConfig(CreateTableSQL, args)
+    logger.info("start the sql script transform ...")
+    val params = DBConfig.parseConfig(CommonSQL, args)
     println(s"params := ${params.toString}")
 
     val dbEngine:DBEngineUtil = params.dbEngine match {
-      case "mysql" =>
-        new MySQLUtil()
-      case "pg" =>
-        new PostgreSQLUtil()
+      case "adb-mysql" =>
+        new ADBMySQLUtil()
+      case "adb-pg" =>
+        new ADBPostgreSQLUtil()
       case _ =>
-        new MySQLUtil()
+        new ADBMySQLUtil()
     }
 
     new java.io.File(params.directory).listFiles.filter(_.getName.endsWith(".sql")).foreach( file => {
-      val source = scala.io.Source.fromFile(file.getName)
+      val source = scala.io.Source.fromFile(params.directory + "/" + file.getName)
       val sql = try source.mkString finally source.close()
 
+      println("======== old sql:")
+      println(sql)
       var newSql = dbEngine.transferDateFunction(sql)
+      println("======== new sql:")
+      println(newSql)
 
-      val newFile = new File("new_" + file.getName)
+      val newFile = new File(params.directory + "/new_" + file.getName)
       val bw = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(newFile), "UTF-8"))
       bw.write(newSql)
       bw.close()
@@ -43,7 +47,5 @@ object CommonSQL {
 
 }
 
-
-//scala com.aws.analytics.CommonSQL \
-//  -g adb_pg \
-//  -r /home/ec2-user/adb_sql
+//export CLASSPATH=./sql-transform-1.0-SNAPSHOT-jar-with-dependencies.jar:./scopt_2.12-4.0.0-RC2.jar
+//scala com.aws.analytics.CommonSQL -g adb-pg -r /home/ec2-user/tpch_query

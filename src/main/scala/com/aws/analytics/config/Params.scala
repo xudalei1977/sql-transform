@@ -1,10 +1,5 @@
 package com.aws.analytics.config
 
-/**
-  * Project: mysql-redshift-loader
-  * Author: shivamsharma
-  * Date: 12/29/16.
-  */
 private[analytics] sealed trait Param
 
 private[analytics] object Params {

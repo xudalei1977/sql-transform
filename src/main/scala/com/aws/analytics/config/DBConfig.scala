@@ -6,6 +6,7 @@ case class DBConfig(fileName: String = "",
                     portNo: Int = 3306,
                     database: String = "",
                     schema: String = "",
+                    tableName: String = "",
                     userName: String = "",
                     password: String = "",
                     directory: String = "")

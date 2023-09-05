@@ -18,7 +18,7 @@ import scala.collection.immutable.{IndexedSeq, Seq, Set}
 
 
 class ADBMySQLUtil extends DBEngineUtil {
-    private val logger: Logger = LoggerFactory.getLogger("MySQLUtil")
+    private val logger: Logger = LoggerFactory.getLogger("ADBMySQLUtil")
     private val MySQL_CLASS_NAME = "com.mysql.jdbc.Driver"
 
     def getJDBCUrl(conf: DBConfig): String = {
@@ -166,7 +166,7 @@ class ADBMySQLUtil extends DBEngineUtil {
 
                 resPrimaryKeys.close()
                 if (primaryKeys.size != 1) {
-                    logger.error(s"Found multiple primary keys, Not taking any. ${primaryKeys.mkString(",")}")
+                    logger.error(s"Found multiple or zero primary keys, Not taking any. ${primaryKeys.mkString(",")}")
                     None
                 } else {
                     logger.info(s"Found primary keys, distribution key is. ${primaryKeys.toSeq.head}")
@@ -234,8 +234,15 @@ class ADBMySQLUtil extends DBEngineUtil {
         )
     }
 
+    def transferDateFunction(sql:String): String = {
+        //todo:
+        ""
+    }
 
-
+    def transferCharFunction(sql:String): String = {
+        //todo:
+        ""
+    }
 
     /**
       * Alter table to add or delete columns in redshift table if any changes occurs in sql table

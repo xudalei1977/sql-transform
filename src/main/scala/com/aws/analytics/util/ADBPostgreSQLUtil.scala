@@ -15,7 +15,7 @@ import scala.collection.immutable.{IndexedSeq, Seq, Set}
 
 
 class ADBPostgreSQLUtil extends DBEngineUtil {
-    private val logger: Logger = LoggerFactory.getLogger("PostgreSQLUtil")
+    private val logger: Logger = LoggerFactory.getLogger("ADBPostgreSQLUtil")
     private val PostgreSQL_CLASS_NAME = "org.postgresql.Driver"
 
 
@@ -162,7 +162,7 @@ class ADBPostgreSQLUtil extends DBEngineUtil {
 
                 resPrimaryKeys.close()
                 if (primaryKeys.size != 1) {
-                    logger.error(s"Found multiple primary keys, Not taking any. ${primaryKeys.mkString(",")}")
+                    logger.error(s"Found multiple or zero primary keys, Not taking any. ${primaryKeys.mkString(",")}")
                     None
                 } else {
                     logger.info(s"Found primary keys, distribution key is. ${primaryKeys.toSeq.head}")
@@ -238,21 +238,50 @@ class ADBPostgreSQLUtil extends DBEngineUtil {
     }
 
     /**
-     * transfer 1: {Column} between date '{YYYY-MM_DD}' and date '{YYYY-MM-DD}' --> {Column} >= to_date({YYYY-MM-DD}) and {Column} <= to_date({YYYY-MM-DD})
-     * transfer 2: date '{YYYY-MM_DD}' {-|+} interval '93 {day|month|year}' --> dateadd({day|month|year}, -93, '{YYYY-MM_DD}')
+     * transfer 1: {Column} between date '{YYYY-MM_DD}' and date '{YYYY-MM-DD}' --> {Column} >= to_date('{YYYY-MM-DD}') and {Column} <= to_date('{YYYY-MM-DD}')
+     * transfer 2: date '{YYYY-MM_DD}' - interval '93' {day|month|year} --> dateadd({day|month|year}, -93, '{YYYY-MM_DD}')
+     * transfer 3: date '1994-08-01' --> to_date('1994-08-01')
+     *
+     *  between 0.06 - 0.01 and 0.06 + 0.01
      */
     def transferDateFunction(sql:String): String = {
-        val p1 = """(?i)\b[a-z0-9_\.]+\b\s+\bbetween\b\s+date\b\s+'([\d]{4})-([\d]{2})-([\d]{2})'\s+\band\b\s+\bdate\b\s+'([\d]{4})-([\d]{2})-([\d]{2})'""".r
-
         var newSql = ""
+
+        val p1 = """(?i)\b[a-z0-9_\.]+\b\s+\bbetween\b\s+date\b\s+'([\d]{4})-([\d]{2})-([\d]{2})'\s+\band\b\s+\bdate\b\s+'([\d]{4})-([\d]{2})-([\d]{2})'""".r
         p1.findAllIn(sql).toList.foreach( funcStr => {
             val arr = funcStr.split(" ")
             val subFuncStr = s" ${arr(0)} >= to_date(${arr(3)}) and ${arr(0)} <= to_date(${arr(6)}) "
             newSql = sql.substring(0, sql.indexOf(funcStr)) + subFuncStr + sql.substring(sql.indexOf(funcStr) + funcStr.length)
         })
+        if (newSql == "") newSql = sql
 
-        val p2 = """(?i)\bdate\b\s+'([\d]{4})-([\d]{2})-([\d]{2})'\s+[-|+]\s+\binterval\b\s+'[\d]\s[day|month|year]]\b\s'""".r
+        val p2 = """(?i)\bdate\b\s+'([\d]{4})-([\d]{2})-([\d]{2})'\s+[-|+]\s+\binterval\b\s+'\s*[0-9]+'\s*(day|month|year)""".r
+        p2.findAllIn(newSql).toList.foreach( funcStr => {
+            val arr = funcStr.replace("'", "").split(" ")
+            val subFuncStr = s" dataadd(${arr(5)}, ${arr(2)}${arr(4)}, '${arr(1)}') "
+            newSql = newSql.substring(0, newSql.indexOf(funcStr)) + subFuncStr + newSql.substring(newSql.indexOf(funcStr) + funcStr.length)
+        })
+        if (newSql == "") newSql = sql
 
+        val p3 = """(?i)\bdate\b\s+'([\d]{4})-([\d]{2})-([\d]{2})'""".r
+        p3.findAllIn(newSql).toList.foreach( funcStr => {
+            val arr = funcStr.split(" ")
+            val subFuncStr = s" to_date(${arr(1)}) "
+            newSql = newSql.substring(0, newSql.indexOf(funcStr)) + subFuncStr + newSql.substring(newSql.indexOf(funcStr) + funcStr.length)
+        })
+        if (newSql == "") newSql = sql
+
+        newSql
+    }
+
+    /**
+     * transfer 1:
+     * transfer 2:
+     * transfer 3:
+     */
+    def transferCharFunction(sql:String): String = {
+        var newSql = sql
+        //todo: add transfer
         newSql
     }
 
