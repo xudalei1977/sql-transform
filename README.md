@@ -6,6 +6,7 @@
 
 1. CommonSQL: 实现从其他数据库到 Redshift 的常用语句的改造
 2. CreateTableSQL: 实现从其他数据库到 Redshift 的建表语句的改造
+3. ExternalTable: 创建同样表结构的外表，并写入数据，以这种方式将表的数据导出到 OSS
 
 #### 2. 环境 
 
@@ -102,4 +103,55 @@ export PATH=$SCALA_HOME/bin:$PATH
   export CLASSPATH=./sql-transform-1.0-SNAPSHOT-jar-with-dependencies.jar:./scopt_2.12-4.0.0-RC2.jar
   scala com.aws.analytics.CommonSQL \
     -g adb_mysql -r /home/ec2-user/adb_sql
+```
+
+###### 3.3.1 ExternalTable
+
+* 支持参数
+
+```properties
+  CreateTableSQL 1.0
+  Usage: Scala ExternalTable [options]
+
+    -g, --dbEngine <value>      source database engine, e.g. adb_mysql, adb_pg
+    -h, --hostname <value>      source database hostname
+    -p, --portNo <value>        source database port no.
+    -d, --database <value>      source database name
+    -s, --schema <value>        schema in source database
+    -u, --userName <value>      user name to login source database
+    -w, --password <value>      password to login source database
+    -e, --ossEndpoint <value>   oss endpoint
+    -l, --ossUrl <value>        oss url for data dir
+    -i, --ossAccessid <value>   access id for oss
+    -k, --ossAccesskey <value>  access key for oss
+    -f, --ossFormat <value>     external table storage format
+    -r, --ossFilter <value>     the filter for insert data into external table
+```
+
+* 启动样例
+
+```shell
+  # 1. -g 指定源数据库的类型
+  # 2. -h 源数据库的服务器
+  # 3. -p 源数据库的端口
+  # 4. -d 源数据库的名称
+  # 5. -s 源数据库的Schema
+  # 6. -u 登录源数据库的用户名
+  # 7. -w 登录源数据库的密码
+  # 8. -e OSS Endpoint
+  # 9. -l OSS 上数据目录的前缀
+  # 10.-i Access ID
+  # 11.-k Access Key
+  # 11.-f 数据存储格式
+  # 12.-r 写入外表的过滤条件
+  
+  export CLASSPATH=./sql-transform-1.0-SNAPSHOT-jar-with-dependencies.jar:./scopt_2.12-4.0.0-RC2.jar
+  scala com.aws.analytics.ExternalTable \
+  -g adb-mysql -h emr-workshop-mysql8.chl9yxs6uftz.us-east-1.rds.amazonaws.com \
+  -p 3306 -d dev -u admin -w Password**** \
+  -e oss-cn-hangzhou-internal.aliyuncs.com \
+  -l oss://<bucket-name>/adb_data/ \
+  -i LTA********* \
+  -k Ccw********* \
+  -f parquet
 ```

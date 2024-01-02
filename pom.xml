@@ -55,6 +55,13 @@
             <scope>${scope.type}</scope>
         </dependency>
 
+        <dependency>
+            <groupId>com.aliyun.odps</groupId>
+            <artifactId>odps-jdbc</artifactId>
+            <version>3.3.6</version>
+            <classifier>jar-with-dependencies</classifier>
+        </dependency>
+
 <!--        <dependency>-->
 <!--            <groupId>log4j</groupId>-->
 <!--            <artifactId>log4j</artifactId>-->

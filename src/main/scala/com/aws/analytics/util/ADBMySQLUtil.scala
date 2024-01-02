@@ -244,6 +244,57 @@ class ADBMySQLUtil extends DBEngineUtil {
         ""
     }
 
+    def createAndInsertExternalTable(conf: DBConfig): Unit = {
+
+        val conn = getConnection(conf)
+        val stmt = conn.createStatement()
+        var sql = s"show create table ${conf.database}.${conf.tableName}"
+        val rs = stmt.executeQuery(sql)
+        var createTableSQL = rs.getString(0)
+
+        //get the partition column by regexp, check whether the external table support "PARTITION BY VALUE(date_format(l_shipdate, '%Y%m'))"
+        //val p1 = """(?i)\bpartition\b\s+by\b\s+value\b\s*\(\b\s*date_format\b\s*\(([a-z0-9_\.,]+)\s*,""".r
+        val p1 = """(?i)\bpartition\b\s+by\b\s+\(([a-z0-9_\.,\s*]+)\)""".r
+        val partitionStr = p1.findFirstMatchIn(createTableSQL).getOrElse("").toString
+        var partitionColumn = ""
+        if (partitionStr != None)
+            partitionColumn = partitionStr.substring(partitionStr.indexOf("(")+1, partitionStr.indexOf(")"))
+
+        //remove the "cluster by" clause
+        var index1 = createTableSQL.toLowerCase.indexOf("distribute by")
+        if (index1 > 0)
+            createTableSQL = createTableSQL.substring(0, index1)
+
+        //remove the "partition by" clause
+        index1 = createTableSQL.toLowerCase.indexOf("partition by")
+        if (index1 > 0)
+            createTableSQL = createTableSQL.substring(0, index1)
+
+        //replace the table name by adding "_external"
+        val p2 = "(?i)`db1`.`table1`"
+        createTableSQL = createTableSQL.replaceFirst(s"(?i)`${conf.database}`.`${conf.tableName}`",
+                                                    s"`${conf.database}`.`${conf.tableName}_external`")
+
+        createTableSQL += s"""ENGINE='OSS'
+        TABLE_PROPERTIES='{
+            "endpoint":"${conf.ossEndpoint}",
+            "url":"${conf.ossUrl}/${conf.database}/${conf.tableName}",
+            "accessid":"${conf.ossAccessid}",
+            "accesskey":"${conf.ossAccesskey}",
+            "format":"${conf.ossFormat}",
+            "partition_column":"${partitionColumn}"
+        }'"""
+
+        stmt.execute(createTableSQL)
+
+        sql = s"submit job insert overwrite ${conf.database}.${conf.tableName}_external " +
+                    s" select * from ${conf.database}.${conf.tableName} where ${conf.ossFilter}"
+        stmt.execute(sql)
+
+        rs.close()
+        stmt.close()
+    }
+
     /**
       * Alter table to add or delete columns in redshift table if any changes occurs in sql table
       *
