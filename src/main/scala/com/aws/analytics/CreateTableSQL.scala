@@ -36,30 +36,38 @@ object CreateTableSQL {
       case _ => "show tables"
     }
 
-    val allTable = dbEngine.queryByJDBC(params, sql)
-    allTable.foreach( tableName => {
+    if(params.dbEngine.equalsIgnoreCase("maxcompute")) {
+      val util = new MaxcomputeUtil(params.userName, params.password, params.region, params.database)
+      util.listTables().forEach(t=>{
+        write2File(bw, t.getName, util.getTableDDL(t.getName))
+      })
+    }
+    else {
+      val allTable = dbEngine.queryByJDBC(params, sql)
+      allTable.foreach(tableName => {
 
-      val conf = DBConfig(hostname = params.hostname,
-                          portNo = params.portNo,
-                          userName = params.userName,
-                          password = params.password,
-                          database = params.database,
-                          schema = params.schema,
-                          tableName = tableName)
+        val conf = DBConfig(hostname = params.hostname,
+          portNo = params.portNo,
+          userName = params.userName,
+          password = params.password,
+          database = params.database,
+          schema = params.schema,
+          tableName = tableName)
 
-      val tableDetails = dbEngine.getValidFieldNames(conf, internalConfig = InternalConfig())(false)
-      val createTableString = RedshiftUtil.getCreateTableString(tableDetails, conf)
-
-      bw.write(s"---------- create table ${tableName} begin ----------\n")
-      bw.write(createTableString.toLowerCase())
-      bw.write("\n")
-      bw.write(s"---------- create table ${tableName} end ----------\n")
-      bw.write("\n")
-      bw.write("\n")
-
-    })
-
+        val tableDetails = dbEngine.getValidFieldNames(conf, internalConfig = InternalConfig())(false)
+        val createTableString = RedshiftUtil.getCreateTableString(tableDetails, conf)
+        write2File(bw, tableName, createTableString)
+      })
+    }
     bw.close()
+  }
+
+  private def write2File(bw: BufferedWriter, tableName: String, ddl: String): Unit = {
+    bw.write(s"---------- create table ${tableName} begin ----------\n")
+    bw.write(ddl.toLowerCase())
+    bw.write("\n")
+    bw.write(s"---------- create table ${tableName} end ----------\n")
+    bw.write("\n")
   }
 
 }

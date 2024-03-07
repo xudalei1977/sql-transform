@@ -7,6 +7,7 @@
 1. CommonSQL: 实现从其他数据库到 Redshift 的常用语句的改造
 2. CreateTableSQL: 实现从其他数据库到 Redshift 的建表语句的改造
 3. ExternalTable: 创建同样表结构的外表，并写入数据，以这种方式将表的数据导出到 OSS
+4. MaxComputeTableSQL: 实现 MaxCompute 到 Hive 的建表语句改造
 
 #### 2. 环境 
 
