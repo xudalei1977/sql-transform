@@ -320,8 +320,8 @@ class ADBPostgreSQLUtil extends DBEngineUtil {
         TABLE_PROPERTIES='{
             "endpoint":"${conf.ossEndpoint}",
             "url":"${conf.ossUrl}/${conf.database}/${conf.tableName}",
-            "accessid":"${conf.ossAccessid}",
-            "accesskey":"${conf.ossAccesskey}",
+            "accessid":"${conf.accessID}",
+            "accesskey":"${conf.accessKey}",
             "format":"${conf.ossFormat}",
             "partition_column":"${partitionColumn}"
         }'"""

@@ -4,6 +4,7 @@ case class DBConfig(fileName: String = "",
                     dbEngine: String ="mysql",
                     hostname: String ="",
                     portNo: Int = 3306,
+                    region: String = "",
                     database: String = "",
                     schema: String = "",
                     tableName: String = "",
@@ -12,10 +13,12 @@ case class DBConfig(fileName: String = "",
                     directory: String = "",
                     ossEndpoint: String = "",
                     ossUrl: String = "",
-                    ossAccessid: String = "",
-                    ossAccesskey: String = "",
+                    accessID: String = "",
+                    accessKey: String = "",
                     ossFormat: String = "",
-                    ossFilter: String = "1=1"
+                    ossFilter: String = "1=1",
+                    s3Location: String = "",
+                    exportDDL: Boolean = false
                    )
 
 object DBConfig {
@@ -31,6 +34,11 @@ object DBConfig {
       opt[String]('s', "schema").optional().action((x, config) => config.copy(schema = x)).text("schema in source database")
       opt[String]('u', "userName").optional().action((x, config) => config.copy(userName = x)).text("user name to login source database")
       opt[String]('w', "password").optional().action((x, config) => config.copy(password = x)).text("password to login source database")
+      opt[String]('r', "region").optional().action((x, config) => config.copy(region = x)).text("region of the source database")
+      opt[String]('o', "s3Location").optional().action((x, config) => config.copy(s3Location = x)).text("target table S3 location")
+      opt[Boolean]('e', "exportDDL").optional().action((x, config) => config.copy(exportDDL = x)).text("Export DDL from source table instead of do transform")
+      opt[String]('i', "accessID").optional().action((x, config) => config.copy(accessID = x)).text("aliyun accessID")
+      opt[String]('k', "accessKey").optional().action((x, config) => config.copy(accessKey = x)).text("aliyun accessKey")
 
       programName match {
         case "CreateTableSQL" =>
@@ -42,8 +50,6 @@ object DBConfig {
         case "ExternalTable" =>
           opt[String]('e', "ossEndpoint").optional().action((x, config) => config.copy(ossEndpoint = x)).text("oss endpoint")
           opt[String]('l', "ossUrl").optional().action((x, config) => config.copy(ossUrl = x)).text("oss url")
-          opt[String]('i', "ossAccessid").optional().action((x, config) => config.copy(ossAccessid = x)).text("oss accessid")
-          opt[String]('k', "ossAccesskey").optional().action((x, config) => config.copy(ossAccesskey = x)).text("oss accesskey")
           opt[String]('f', "ossFormat").optional().action((x, config) => config.copy(ossFormat = x)).text("oss external table format")
           opt[String]('r', "ossFilter").optional().action((x, config) => config.copy(ossFilter = x)).text("oss filter")
       }
@@ -56,9 +62,5 @@ object DBConfig {
         null
       }
     }
-
   }
-
 }
-
-

@@ -46,8 +46,8 @@ object ExternalTable {
                           tableName = tableName,
                           ossEndpoint = params.ossEndpoint,
                           ossUrl = params.ossUrl,
-                          ossAccessid = params.ossAccessid,
-                          ossAccesskey = params.ossAccesskey,
+                          accessID = params.accessID,
+                          accessKey = params.accessKey,
                           ossFormat = params.ossFormat,
                           ossFilter = params.ossFilter)
 

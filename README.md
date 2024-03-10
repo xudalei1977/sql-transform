@@ -7,7 +7,6 @@
 1. CommonSQL: 实现从其他数据库到 Redshift 的常用语句的改造
 2. CreateTableSQL: 实现从其他数据库到 Redshift 的建表语句的改造
 3. ExternalTable: 创建同样表结构的外表，并写入数据，以这种方式将表的数据导出到 OSS
-4. MaxComputeTableSQL: 实现 MaxCompute 到 Hive 的建表语句改造
 
 #### 2. 环境 
 
@@ -62,25 +61,41 @@ export PATH=$SCALA_HOME/bin:$PATH
     -s, --schema <value>        schema in source database
     -u, --userName <value>      user name to login source database
     -w, --password <value>      password to login source database
+    -r, --region <value>        region of the source database, for maxcompute
+    -o, --s3Location <value>    target table S3 location, for hive
+    -i, --accessID <value>      aliyun accessID
+    -k, --accessKey <value>     aliyun accessKey
 ```
 
 * 启动样例
 
 ```shell
-  # 1. -g 指定源数据库的类型
-  # 2. -f 生成Redshift的建表语句，保存在哪个文件
-  # 3. -h 源数据库的服务器
-  # 4. -p 源数据库的端口
-  # 5. -d 源数据库的名称
-  # 6. -s 源数据库的Schema
-  # 7. -u 登录源数据库的用户名
-  # 8. -w 登录源数据库的密码
+  # 1.  -g 指定源数据库的类型
+  # 2.  -f 生成Redshift的建表语句，保存在哪个文件
+  # 3.  -h 源数据库的服务器
+  # 4.  -p 源数据库的端口
+  # 5.  -d 源数据库的名称
+  # 6.  -s 源数据库的Schema
+  # 7.  -u 登录源数据库的用户名
+  # 8.  -w 登录源数据库的密码
+  # 9.  -r MaxCompute所在Region
+  # 10. -o Hive表数据文件的S3 Location
+  # 11. -i 阿里云 Access ID
+  # 12. -k 阿里云 Access Key
   
   export CLASSPATH=./sql-transform-1.0-SNAPSHOT-jar-with-dependencies.jar:./scopt_2.12-4.0.0-RC2.jar
+  
+  # 从 ADB 到 Redshift
   scala com.aws.analytics.CreateTableSQL \
     -g adb_mysql -f /home/ec2-user/create_table_redshift.sql \
     -h emr-workshop-mysql8.chl9yxs6uftz.us-east-1.rds.amazonaws.com \
     -p 3306 -d dev -u admin -w ******
+  
+  # 从 MaxCompute 到 Hive
+  scala com.aws.analytics.CreateTableSQL \
+  -f /home/ec2-user/create_table_hive.sql -g maxcompute \
+  -d mc_2_spark -r cn-hangzhou -o s3://dalei-demo/tmp/
+  -i LTAI***** -k 0xnP*****
 ```
 
 ###### 3.3.2 CommonSQL
@@ -123,8 +138,8 @@ export PATH=$SCALA_HOME/bin:$PATH
     -w, --password <value>      password to login source database
     -e, --ossEndpoint <value>   oss endpoint
     -l, --ossUrl <value>        oss url for data dir
-    -i, --ossAccessid <value>   access id for oss
-    -k, --ossAccesskey <value>  access key for oss
+    -i, --accessID <value>      access id for oss
+    -k, --accessKey <value>     access key for oss
     -f, --ossFormat <value>     external table storage format
     -r, --ossFilter <value>     the filter for insert data into external table
 ```
