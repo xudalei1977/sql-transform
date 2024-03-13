@@ -1,10 +1,9 @@
 package com.aws.analytics
 
-import org.slf4j.{Logger, LoggerFactory}
 import com.aws.analytics.config.DBConfig
-import com.aws.analytics.util._
-import com.aws.analytics.config.InternalConfs
 import com.aws.analytics.config.InternalConfs.InternalConfig
+import com.aws.analytics.util._
+import org.slf4j.{Logger, LoggerFactory}
 
 import java.io._
 
@@ -86,5 +85,5 @@ object CreateTableSQL {
 //for maxcompute, use ak/sk as user/password, and must run on eks
 //scala com.aws.analytics.CreateTableSQL \
 //  -f /home/ec2-user/create_table_hive.sql -g maxcompute \
-//  -d mc_2_spark -r cn-hangzhou -o s3://dalei-demo/tmp/
-//  -i LTAI***** -k 0xnP*****
+//  -d mc_2_hive -r cn-hangzhou -o s3://dalei-demo/tmp/ \
+//  -i AK****** -k SK********
