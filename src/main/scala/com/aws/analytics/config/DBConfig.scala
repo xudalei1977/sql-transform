@@ -13,8 +13,6 @@ case class DBConfig(fileName: String = "",
                     directory: String = "",
                     ossEndpoint: String = "",
                     ossUrl: String = "",
-                    accessID: String = "",
-                    accessKey: String = "",
                     ossFormat: String = "",
                     ossFilter: String = "1=1",
                     s3Location: String = "",
@@ -37,8 +35,6 @@ object DBConfig {
       opt[String]('r', "region").optional().action((x, config) => config.copy(region = x)).text("region of the source database")
       opt[String]('o', "s3Location").optional().action((x, config) => config.copy(s3Location = x)).text("target table S3 location")
       opt[Boolean]('e', "exportDDL").optional().action((x, config) => config.copy(exportDDL = x)).text("Export DDL from source table instead of do transform")
-      opt[String]('i', "accessID").optional().action((x, config) => config.copy(accessID = x)).text("aliyun accessID")
-      opt[String]('k', "accessKey").optional().action((x, config) => config.copy(accessKey = x)).text("aliyun accessKey")
 
       programName match {
         case "CreateTableSQL" =>
@@ -52,6 +48,10 @@ object DBConfig {
           opt[String]('l', "ossUrl").optional().action((x, config) => config.copy(ossUrl = x)).text("oss url")
           opt[String]('f', "ossFormat").optional().action((x, config) => config.copy(ossFormat = x)).text("oss external table format")
           opt[String]('r', "ossFilter").optional().action((x, config) => config.copy(ossFilter = x)).text("oss filter")
+
+        case "MaxCompute2OSS" =>
+          opt[String]('l', "ossUrl").optional().action((x, config) => config.copy(ossUrl = x)).text("oss url")
+          opt[String]('f', "ossFormat").optional().action((x, config) => config.copy(ossFormat = x)).text("oss external table format")
       }
     }
 

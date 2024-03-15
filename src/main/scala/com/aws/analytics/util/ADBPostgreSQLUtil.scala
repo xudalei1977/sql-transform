@@ -8,15 +8,12 @@ import java.sql.{Connection, DriverManager, PreparedStatement, ResultSet}
 import java.util.Properties
 import scala.collection.immutable.{IndexedSeq, Seq, Set}
 
-/*
---packages "org.apache.hadoop:hadoop-aws:2.7.2,com.databricks:spark-redshift_2.10:1.1.0,com.amazonaws:aws-java-sdk:1.7.4,mysql:mysql-connector-java:5.1.39"
---jars=<Some-location>/RedshiftJDBC4-1.1.17.1017.jar
-*/
-
 
 class ADBPostgreSQLUtil extends DBEngineUtil {
     private val logger: Logger = LoggerFactory.getLogger("ADBPostgreSQLUtil")
     private val PostgreSQL_CLASS_NAME = "org.postgresql.Driver"
+    private val accessID = System.getenv("ALI_CLOUD_ACCESS_KEY_ID")
+    private val accessKey = System.getenv("ALI_CLOUD_ACCESS_KEY_SECRET")
 
 
     def getJDBCUrl(conf: DBConfig): String = {
@@ -312,7 +309,6 @@ class ADBPostgreSQLUtil extends DBEngineUtil {
             createTableSQL = createTableSQL.substring(0, index1)
 
         //replace the table name by adding "_external"
-        val p2 = "(?i)`db1`.`table1`"
         createTableSQL = createTableSQL.replaceFirst(s"(?i)`${conf.database}`.`${conf.tableName}`",
             s"`${conf.database}`.`${conf.tableName}_external`")
 
@@ -320,8 +316,8 @@ class ADBPostgreSQLUtil extends DBEngineUtil {
         TABLE_PROPERTIES='{
             "endpoint":"${conf.ossEndpoint}",
             "url":"${conf.ossUrl}/${conf.database}/${conf.tableName}",
-            "accessid":"${conf.accessID}",
-            "accesskey":"${conf.accessKey}",
+            "accessid":"${accessID}",
+            "accesskey":"${accessKey}",
             "format":"${conf.ossFormat}",
             "partition_column":"${partitionColumn}"
         }'"""

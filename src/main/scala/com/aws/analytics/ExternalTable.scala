@@ -46,8 +46,6 @@ object ExternalTable {
                           tableName = tableName,
                           ossEndpoint = params.ossEndpoint,
                           ossUrl = params.ossUrl,
-                          accessID = params.accessID,
-                          accessKey = params.accessKey,
                           ossFormat = params.ossFormat,
                           ossFilter = params.ossFilter)
 
@@ -62,6 +60,4 @@ object ExternalTable {
 //  -p 3306 -d dev -u admin -w Password**** \
 //  -e oss-cn-hangzhou-internal.aliyuncs.com \
 //  -u oss://<bucket-name>/adb_data/ \
-//  -i LTA*********
-//  -k Ccw*********
 //  -f parquet

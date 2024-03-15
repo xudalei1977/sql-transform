@@ -11,15 +11,12 @@ import org.slf4j.{Logger, LoggerFactory}
 import java.sql.{Connection, DriverManager, PreparedStatement, ResultSet}
 import scala.collection.immutable.{IndexedSeq, Seq, Set}
 
-/*
---packages "org.apache.hadoop:hadoop-aws:2.7.2,com.databricks:spark-redshift_2.10:1.1.0,com.amazonaws:aws-java-sdk:1.7.4,mysql:mysql-connector-java:5.1.39"
---jars=<Some-location>/RedshiftJDBC4-1.1.17.1017.jar
-*/
-
 
 class ADBMySQLUtil extends DBEngineUtil {
     private val logger: Logger = LoggerFactory.getLogger("ADBMySQLUtil")
     private val MySQL_CLASS_NAME = "com.mysql.jdbc.Driver"
+    private val accessID = System.getenv("ALI_CLOUD_ACCESS_KEY_ID")
+    private val accessKey = System.getenv("ALI_CLOUD_ACCESS_KEY_SECRET")
 
     def getJDBCUrl(conf: DBConfig): String = {
         s"jdbc:mysql://${conf.hostname}:${conf.portNo}/${conf.database}?useSSL=false&user=${conf.userName}&password=${conf.password}"
@@ -245,7 +242,6 @@ class ADBMySQLUtil extends DBEngineUtil {
     }
 
     def createAndInsertExternalTable(conf: DBConfig): Unit = {
-
         val conn = getConnection(conf)
         val stmt = conn.createStatement()
         var sql = s"show create table ${conf.database}.${conf.tableName}"
@@ -279,8 +275,8 @@ class ADBMySQLUtil extends DBEngineUtil {
         TABLE_PROPERTIES='{
             "endpoint":"${conf.ossEndpoint}",
             "url":"${conf.ossUrl}/${conf.database}/${conf.tableName}",
-            "accessid":"${conf.accessID}",
-            "accesskey":"${conf.accessKey}",
+            "accessid":"${accessID}",
+            "accesskey":"${accessKey}",
             "format":"${conf.ossFormat}",
             "partition_column":"${partitionColumn}"
         }'"""

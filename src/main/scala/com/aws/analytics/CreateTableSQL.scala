@@ -36,9 +36,9 @@ object CreateTableSQL {
     }
 
     if(params.dbEngine.equalsIgnoreCase("maxcompute")) {
-      val util = new MaxcomputeUtil(params.accessID, params.accessKey, params.region, params.database, params.s3Location)
+      val util = new MaxcomputeUtil(params.region, params.database)
       util.listTables().forEach(t=>{
-        write2File(bw, t.getName, util.getTableDDL(t.getName))
+        write2File(bw, t.getName, util.getTableDDL(t.getName, params.s3Location)._1)
       })
     }
     else {
@@ -82,8 +82,8 @@ object CreateTableSQL {
 //  -h gp-bp1t4m428azo2zxk0o-master.gpdb.rds.aliyuncs.com \
 //  -p 5432 -d adb_sampledata_tpch -s public -u postgres -w Password****
 
-//for maxcompute, use ak/sk as user/password, and must run on eks
+//export ALI_CLOUD_ACCESS_KEY_ID=<Your AK>
+//export ALI_CLOUD_ACCESS_KEY_SECRET=<Your SK>
 //scala com.aws.analytics.CreateTableSQL \
 //  -f /home/ec2-user/create_table_hive.sql -g maxcompute \
-//  -d mc_2_hive -r cn-hangzhou -o s3://dalei-demo/tmp/ \
-//  -i AK****** -k SK********
+//  -d mc_2_hive -r cn-hangzhou -o s3://dalei-demo/tmp/

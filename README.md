@@ -63,8 +63,6 @@ export PATH=$SCALA_HOME/bin:$PATH
     -w, --password <value>      password to login source database
     -r, --region <value>        region of the source database, for maxcompute
     -o, --s3Location <value>    target table S3 location, for hive
-    -i, --accessID <value>      aliyun accessID
-    -k, --accessKey <value>     aliyun accessKey
 ```
 
 * 启动样例
@@ -80,8 +78,6 @@ export PATH=$SCALA_HOME/bin:$PATH
   # 8.  -w 登录源数据库的密码
   # 9.  -r MaxCompute所在Region
   # 10. -o Hive表数据文件的S3 Location
-  # 11. -i 阿里云 Access ID
-  # 12. -k 阿里云 Access Key
   
   export CLASSPATH=./sql-transform-1.0-SNAPSHOT-jar-with-dependencies.jar:./scopt_2.12-4.0.0-RC2.jar
   
@@ -92,10 +88,11 @@ export PATH=$SCALA_HOME/bin:$PATH
     -p 3306 -d dev -u admin -w ******
   
   # 从 MaxCompute 到 Hive
+  export ALI_CLOUD_ACCESS_KEY_ID=<Your AK>
+  export ALI_CLOUD_ACCESS_KEY_SECRET=<Your SK>
   scala com.aws.analytics.CreateTableSQL \
-  -f /home/ec2-user/create_table_hive.sql -g maxcompute \
-  -d mc_2_spark -r cn-hangzhou -o s3://dalei-demo/tmp/
-  -i LTAI***** -k 0xnP*****
+    -f /home/ec2-user/create_table_hive.sql -g maxcompute \
+    -d mc_2_hive -r cn-hangzhou -o s3://dalei-demo/tmp/
 ```
 
 ###### 3.3.2 CommonSQL
@@ -138,8 +135,6 @@ export PATH=$SCALA_HOME/bin:$PATH
     -w, --password <value>      password to login source database
     -e, --ossEndpoint <value>   oss endpoint
     -l, --ossUrl <value>        oss url for data dir
-    -i, --accessID <value>      access id for oss
-    -k, --accessKey <value>     access key for oss
     -f, --ossFormat <value>     external table storage format
     -r, --ossFilter <value>     the filter for insert data into external table
 ```
@@ -156,10 +151,8 @@ export PATH=$SCALA_HOME/bin:$PATH
   # 7. -w 登录源数据库的密码
   # 8. -e OSS Endpoint
   # 9. -l OSS 上数据目录的前缀
-  # 10.-i Access ID
-  # 11.-k Access Key
-  # 11.-f 数据存储格式
-  # 12.-r 写入外表的过滤条件
+  # 10.-f 数据存储格式
+  # 11.-r 写入外表的过滤条件
   
   export CLASSPATH=./sql-transform-1.0-SNAPSHOT-jar-with-dependencies.jar:./scopt_2.12-4.0.0-RC2.jar
   scala com.aws.analytics.ExternalTable \
@@ -167,7 +160,5 @@ export PATH=$SCALA_HOME/bin:$PATH
   -p 3306 -d dev -u admin -w Password**** \
   -e oss-cn-hangzhou-internal.aliyuncs.com \
   -l oss://<bucket-name>/adb_data/ \
-  -i LTA********* \
-  -k Ccw********* \
   -f parquet
 ```
