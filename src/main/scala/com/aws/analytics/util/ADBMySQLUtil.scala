@@ -241,6 +241,8 @@ class ADBMySQLUtil extends DBEngineUtil {
         ""
     }
 
+    def getCreateTableSQL(conf: DBConfig): (String, String) = { ("", "") }
+
     def createAndInsertExternalTable(conf: DBConfig): Unit = {
         val conn = getConnection(conf)
         val stmt = conn.createStatement()

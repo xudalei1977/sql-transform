@@ -12,12 +12,12 @@ import java.sql.Connection
 import java.sql.DriverManager
 import java.util.{HashMap, List, Properties}
 
-class MaxcomputeUtil(region: String, projectName: String) {
+class MaxcomputeUtil2(region: String, projectName: String) {
     private val logger: Logger = LoggerFactory.getLogger("MaxcomputeUtil")
     private val accessID = System.getenv("ALI_CLOUD_ACCESS_KEY_ID")
     private val accessKey = System.getenv("ALI_CLOUD_ACCESS_KEY_SECRET")
 
-    private val config = new Config().setAccessKeyId(accessID).setAccessKeySecret(accessKey).setRegionId(region)
+    private val config = new Config().setAccessKeyId(accessID).setAccessKeySecret(accessKey).setEndpoint(s"maxcompute.$region.aliyuncs.com")
     private val client: Client = new Client(config)
 
     def getJDBCUrl(): String = {
@@ -76,7 +76,7 @@ class MaxcomputeUtil(region: String, projectName: String) {
         //add stored format, location, and snappy
         createTableSQL +=
           s""" stored as parquet
-             | location '$s3Location/$tableName'
+             | location '$s3Location/$projectName/$tableName'
              | tblproperties('parquet.compression' = 'SNAPPY')""".stripMargin
 
         //process the partition columns

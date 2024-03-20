@@ -282,6 +282,7 @@ class ADBPostgreSQLUtil extends DBEngineUtil {
         newSql
     }
 
+    def getCreateTableSQL(conf: DBConfig): (String, String) = { ("", "") }
 
     def createAndInsertExternalTable(conf: DBConfig): Unit = {
         val conn = getConnection(conf)

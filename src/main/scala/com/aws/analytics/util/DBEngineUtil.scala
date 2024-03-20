@@ -14,4 +14,5 @@ private[analytics] trait DBEngineUtil{
   def transferDateFunction(sql:String): String
   def transferCharFunction(sql:String): String
   def createAndInsertExternalTable(conf: DBConfig)
+  def getCreateTableSQL(conf: DBConfig): (String, String)
 }

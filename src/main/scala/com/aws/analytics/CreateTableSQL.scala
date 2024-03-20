@@ -25,6 +25,8 @@ object CreateTableSQL {
         new ADBMySQLUtil()
       case "adb-pg" =>
         new ADBPostgreSQLUtil()
+      case "maxcompute" =>
+        new MaxComputeUtil()
       case _ =>
         new ADBMySQLUtil()
     }
@@ -35,8 +37,30 @@ object CreateTableSQL {
       case _ => "show tables"
     }
 
+//    val allTable = dbEngine.queryByJDBC(params, sql)
+//    allTable.foreach(tableName => {
+//      println(s"***** tableName := $tableName")
+//      val conf = DBConfig(hostname = params.hostname,
+//          portNo = params.portNo,
+//          userName = params.userName,
+//          password = params.password,
+//          database = params.database,
+//          schema = params.schema,
+//          tableName = tableName,
+//          region = params.region)
+//
+//      val createTableString =
+//        if (params.dbEngine == "maxcompute")
+//          dbEngine.getCreateTableSQL(conf)._1
+//        else {
+//          val tableDetails = dbEngine.getValidFieldNames(conf, internalConfig = InternalConfig())(false)
+//          RedshiftUtil.getCreateTableString(tableDetails, conf)
+//        }
+//      write2File(bw, tableName, createTableString)
+//      })
+
     if(params.dbEngine.equalsIgnoreCase("maxcompute")) {
-      val util = new MaxcomputeUtil(params.region, params.database)
+      val util = new MaxcomputeUtil2(params.region, params.database)
       util.listTables().forEach(t=>{
         write2File(bw, t.getName, util.getTableDDL(t.getName, params.s3Location)._1)
       })
@@ -58,6 +82,7 @@ object CreateTableSQL {
         write2File(bw, tableName, createTableString)
       })
     }
+
     bw.close()
   }
 
@@ -84,6 +109,7 @@ object CreateTableSQL {
 
 //export ALI_CLOUD_ACCESS_KEY_ID=<Your AK>
 //export ALI_CLOUD_ACCESS_KEY_SECRET=<Your SK>
+//export CLASSPATH=./sql-transform-1.0-SNAPSHOT-jar-with-dependencies.jar:./scopt_2.12-4.0.0-RC2.jar
 //scala com.aws.analytics.CreateTableSQL \
 //  -f /home/ec2-user/create_table_hive.sql -g maxcompute \
 //  -d mc_2_hive -r cn-hangzhou -o s3://dalei-demo/tmp/
