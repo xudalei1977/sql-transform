@@ -47,25 +47,22 @@ class ADBMySQLUtil extends DBEngineUtil {
     }
 
     def getConnection(conf: DBConfig): Connection = {
-        val connectionProps = new Properties()
-        //connectionProps.put("user", conf.userName)
-        //connectionProps.put("password", conf.password)
         val connectionString = getJDBCUrl(conf)
         println(s"connection string: = ${connectionString}" )
-        Class.forName("com.mysql.jdbc.Driver")
-        DriverManager.getConnection(connectionString, connectionProps)
+        Class.forName(MySQL_CLASS_NAME)
+        DriverManager.getConnection(connectionString)
     }
 
     //Use this method to get the columns to extract
-    def getValidFieldNames(mysqlConfig: DBConfig, internalConfig: InternalConfig)(implicit crashOnInvalidType: Boolean): TableDetails = {
-        val conn = getConnection(mysqlConfig)
-        val tableDetails = getTableDetails(conn, mysqlConfig, internalConfig)(crashOnInvalidType)
+    def getValidFieldNames(conf: DBConfig, internalConfig: InternalConfig)(implicit crashOnInvalidType: Boolean): String = {
+        val conn = getConnection(conf)
+        val tableDetails = getTableDetails(conf, internalConfig)(crashOnInvalidType)
         conn.close()
-        tableDetails
+        tableDetails.validFields.map(r => s""" ${r.fieldName.toLowerCase} """).mkString(",")
     }
 
-    def getTableDetails(conn: Connection, conf: DBConfig, internalConfig: InternalConfig)
-                       (implicit crashOnInvalidType: Boolean): TableDetails = {
+    def getTableDetails(conf: DBConfig, internalConfig: InternalConfig)(implicit crashOnInvalidType: Boolean): TableDetails = {
+        val conn = getConnection(conf)
         val stmt = conn.createStatement()
         val query = s"SELECT * from ${conf.database}.${conf.tableName} where 1 < 0"
         val rs = stmt.executeQuery(query)
@@ -183,7 +180,7 @@ class ADBMySQLUtil extends DBEngineUtil {
             if (setColumns.contains(columnName.toLowerCase)) {
                 primaryKeys = primaryKeys + columnName
             } else {
-                logger.warn(s"Rejected $columnName")
+                logger.warn(s"Could not access primary key $columnName")
             }
         }
 
@@ -240,8 +237,6 @@ class ADBMySQLUtil extends DBEngineUtil {
         //todo:
         ""
     }
-
-    def getCreateTableSQL(conf: DBConfig): (String, String) = { ("", "") }
 
     def createAndInsertExternalTable(conf: DBConfig): Unit = {
         val conn = getConnection(conf)

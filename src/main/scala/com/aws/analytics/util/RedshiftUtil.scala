@@ -2,19 +2,17 @@ package com.aws.analytics.util
 
 import java.sql.{Connection, DriverManager, ResultSet}
 import java.util.Properties
-
 import com.aws.analytics.config.Configurations.DBConfiguration
 import com.aws.analytics.config.InternalConfs.{DBField, InternalConfig, TableDetails}
 import com.aws.analytics.config.RedshiftType
 import com.aws.analytics.config.DBConfig
-import org.slf4j.LoggerFactory
-
+import org.slf4j.{Logger, LoggerFactory}
 import scala.collection.immutable.{IndexedSeq, Set}
 
 
-object RedshiftUtil {
-    private val logger = LoggerFactory.getLogger(RedshiftUtil.getClass)
-
+class RedshiftUtil {
+    private val logger: Logger = LoggerFactory.getLogger("RedshiftUtil")
+    private val CLASS_NAME = "com.amazon.redshift.jdbc4.Driver"
 
     def getJDBCUrl(conf: DBConfig): String = {
         val jdbcUrl = s"jdbc:${conf.database}://${conf.hostname}:${conf.portNo}/${conf.database}"
@@ -28,10 +26,9 @@ object RedshiftUtil {
         connectionProps.put("user", conf.userName)
         connectionProps.put("password", conf.password)
         val connectionString = getJDBCUrl(conf)
-        Class.forName("com.amazon.redshift.jdbc4.Driver")
+        Class.forName(CLASS_NAME)
         DriverManager.getConnection(connectionString, connectionProps)
     }
-
 
     /**
       * Get all column names and data types from redshift
@@ -42,20 +39,19 @@ object RedshiftUtil {
     def getColumnNamesAndTypes(dbConf: DBConfig): Map[String, String] = {
         logger.info("Getting all column names for {}", dbConf.toString)
         val query = s"SELECT * FROM ${dbConf.schema}.${dbConf.tableName} WHERE 1 < 0;"
-        val connection = RedshiftUtil.getConnection(dbConf)
-        val result: ResultSet = connection.createStatement().executeQuery(query)
+        val conn = getConnection(dbConf)
+        val result: ResultSet = conn.createStatement().executeQuery(query)
         try {
             val resultSetMetaData = result.getMetaData
             val count = resultSetMetaData.getColumnCount
 
             val columnMap = (1 to count).foldLeft(Map[String, String]()) { (set, i) =>
-
                 set + (resultSetMetaData.getColumnName(i).toLowerCase -> resultSetMetaData.getColumnTypeName(i))
             }
             columnMap
         } finally {
             result.close()
-            connection.close()
+            conn.close()
         }
     }
 
@@ -95,9 +91,9 @@ object RedshiftUtil {
         stmt.close()
     }
 
-    def getTableNameWithSchema(rc: DBConfig): String = {
-        if (rc.schema != null && rc.schema != "") s"${rc.schema}.${rc.tableName}"
-        else s"${rc.tableName}"
+    def getTableNameWithSchema(conf: DBConfig): String = {
+        if (conf.schema != null && conf.schema != "") s"${conf.schema}.${conf.tableName}"
+        else s"${conf.tableName}"
     }
 
     def getCreateTableString(td: TableDetails, conf: DBConfig): String = {
@@ -119,7 +115,6 @@ object RedshiftUtil {
                |    $fieldNames $primaryKey
                |)
                |$distributionKey $sortKeys ;""".stripMargin
-
     }
 
 }

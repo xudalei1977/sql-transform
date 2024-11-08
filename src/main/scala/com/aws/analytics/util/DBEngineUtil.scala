@@ -8,11 +8,11 @@ import scala.collection.immutable.Seq
 
 
 private[analytics] trait DBEngineUtil{
+  def getJDBCUrl(conf: DBConfig): String
   def queryByJDBC(conf: DBConfig, sql: String) : Seq[String]
   def getConnection(conf: DBConfig): Connection
-  def getValidFieldNames(conf: DBConfig, internalConfig: InternalConfig)(implicit crashOnInvalidType: Boolean): TableDetails
+  def getTableDetails(conf: DBConfig, internalConfig: InternalConfig)(implicit crashOnInvalidType: Boolean): TableDetails
   def transferDateFunction(sql:String): String
   def transferCharFunction(sql:String): String
   def createAndInsertExternalTable(conf: DBConfig)
-  def getCreateTableSQL(conf: DBConfig): (String, String)
 }

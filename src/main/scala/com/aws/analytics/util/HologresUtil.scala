@@ -9,14 +9,15 @@ import java.util.Properties
 import scala.collection.immutable.{IndexedSeq, Seq, Set}
 
 
-class ADBPostgreSQLUtil extends DBEngineUtil {
+class HologresUtil extends DBEngineUtil {
     private val logger: Logger = LoggerFactory.getLogger("ADBPostgreSQLUtil")
     private val PostgreSQL_CLASS_NAME = "org.postgresql.Driver"
     private val accessID = System.getenv("ALI_CLOUD_ACCESS_KEY_ID")
     private val accessKey = System.getenv("ALI_CLOUD_ACCESS_KEY_SECRET")
 
     def getJDBCUrl(conf: DBConfig): String = {
-        s"jdbc:postgresql://${conf.hostname}:${conf.portNo}/${conf.database}?ssl=false"
+        logger.info(s"********* jdbc url is jdbc:postgresql://${conf.hostname}:${conf.portNo}/${conf.database}?user=${conf.userName}&password=${conf.password}")
+        s"jdbc:postgresql://${conf.hostname}:${conf.portNo}/${conf.database}?user=${conf.userName}&password=${conf.password}"
     }
 
     def queryByJDBC(conf: DBConfig, sql: String) : Seq[String] = {
@@ -26,7 +27,7 @@ class ADBPostgreSQLUtil extends DBEngineUtil {
         var seq: Seq[String] = Seq()
         try {
             Class.forName(PostgreSQL_CLASS_NAME)
-            conn = DriverManager.getConnection(getJDBCUrl(conf), conf.userName, conf.password)
+            conn = DriverManager.getConnection(getJDBCUrl(conf))
             ps = conn.prepareStatement(sql)
             rs = ps.executeQuery
 
@@ -44,11 +45,8 @@ class ADBPostgreSQLUtil extends DBEngineUtil {
     }
 
     def getConnection(conf: DBConfig): Connection = {
-        val connectionProps = new Properties()
-        connectionProps.put("user", conf.userName)
-        connectionProps.put("password", conf.password)
         Class.forName(PostgreSQL_CLASS_NAME)
-        DriverManager.getConnection(getJDBCUrl(conf), connectionProps)
+        DriverManager.getConnection(getJDBCUrl(conf))
     }
 
     //Use this method to get the columns to extract
@@ -159,7 +157,7 @@ class ADBPostgreSQLUtil extends DBEngineUtil {
 
                 resPrimaryKeys.close()
                 if (primaryKeys.size != 1) {
-                    logger.error(s"Found multiple or zero primary keys, Not taking any. ${primaryKeys.mkString(",")}")
+                    logger.warn(s"Found multiple or zero primary keys, Not taking any. ${primaryKeys.mkString(",")}")
                     None
                 } else {
                     logger.info(s"Found primary keys, distribution key is. ${primaryKeys.toSeq.head}")

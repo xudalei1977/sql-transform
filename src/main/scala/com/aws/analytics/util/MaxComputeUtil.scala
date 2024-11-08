@@ -15,9 +15,8 @@ class MaxComputeUtil extends DBEngineUtil {
     private val accessID = System.getenv("ALI_CLOUD_ACCESS_KEY_ID")
     private val accessKey = System.getenv("ALI_CLOUD_ACCESS_KEY_SECRET")
 
-
     def getJDBCUrl(conf: DBConfig): String = {
-        s"jdbc:odps:http://service.${conf.region}.maxcompute.aliyun.com/api?project=${conf.database}&useProjectTimeZone=true;"
+        s"jdbc:odps:http://service.${conf.mcRegion}.maxcompute.aliyun.com/api?project=${conf.database}&useProjectTimeZone=true;"
     }
 
     def queryByJDBC(conf: DBConfig, sql: String) : Seq[String] = {
@@ -52,15 +51,15 @@ class MaxComputeUtil extends DBEngineUtil {
     }
     
     //Use this method to get the columns to extract
-    def getValidFieldNames(conf: DBConfig, internalConfig: InternalConfig)(implicit crashOnInvalidType: Boolean): TableDetails = {
+    def getValidFieldNames(conf: DBConfig, internalConfig: InternalConfig)(implicit crashOnInvalidType: Boolean): String = {
         val conn = getConnection(conf)
-        val tableDetails = getTableDetails(conn, conf, internalConfig)(crashOnInvalidType)
+        val tableDetails = getTableDetails(conf, internalConfig)(crashOnInvalidType)
         conn.close()
-        tableDetails
+        tableDetails.validFields.map(r => s""" ${r.fieldName.toLowerCase} """).mkString(",")
     }
 
-    def getTableDetails(conn: Connection, conf: DBConfig, internalConfig: InternalConfig)
-                       (implicit crashOnInvalidType: Boolean): TableDetails = {
+    def getTableDetails(conf: DBConfig, internalConfig: InternalConfig)(implicit crashOnInvalidType: Boolean): TableDetails = {
+        val conn = getConnection(conf)
         val stmt = conn.createStatement()
         val query = s"SELECT * from ${conf.database}.${conf.tableName} where 1 < 0"
         val rs = stmt.executeQuery(query)
@@ -101,6 +100,7 @@ class MaxComputeUtil extends DBEngineUtil {
         val sortKeys = getIndexes(conn, setColumns, conf)
         val distKey = getDistStyleAndKey(conn, setColumns, conf, internalConfig)
         val primaryKey = getPrimaryKey(conn, setColumns, conf)
+        conn.close()
         TableDetails(validFields, invalidFields, sortKeys, distKey, primaryKey)
     }
 
@@ -199,7 +199,12 @@ class MaxComputeUtil extends DBEngineUtil {
         newSql
     }
 
-    def getCreateTableSQL(conf: DBConfig): (String, String) = {
+    /**
+     * get create table in hive
+     * *
+     * do NOT use this one, because the show create table could not be executed
+     */
+    def getCreateTableSQL(conf: DBConfig): (String, String, Boolean) = {
         val query = s"show create table ${conf.database}.${conf.tableName}"
         var createTableSQL = queryByJDBC(conf, query)(0)
 
@@ -208,46 +213,53 @@ class MaxComputeUtil extends DBEngineUtil {
         if (createTableSQL.endsWith(";"))
             createTableSQL = createTableSQL.dropRight(1)
 
-        //add external table
-        val p1 = """(?i)\bcreate\b\s+\btable\b\s+""".r
-        createTableSQL = p1.replaceFirstIn(createTableSQL, "create external table ")
+        //check if external table
+        val p1 = """(?i)\bcreate\b\s+\bexternal\b\s+\btable\b\s+""".r
+        val isExternal = if(p1.findFirstMatchIn(createTableSQL).getOrElse("").toString.equals("")) false else true
+
+        //add external table, because in aws emr, table are all external
+        val p2 = """(?i)\bcreate\b\s+\btable\b\s+""".r
+        createTableSQL = p2.replaceFirstIn(createTableSQL, "create external table ")
 
         //remove the tblproperties
-        //val p1 = """(?i)\btblproperties\b\s+\(([a-z0-9_\.,'"\=\s*]+)\)""".r
-        val p2 = """(?i)\btblproperties\b\s+\((.*)\)""".r
-        createTableSQL = p2.replaceFirstIn(createTableSQL, "")
-
-        //remove the lifecycle
-        val p3 = """(?i)\blifecycle\b\s+[1-9]+""".r
+        //val p3 = """(?i)\btblproperties\b\s+\(([a-z0-9_\.,'"\=\s*]+)\)""".r
+        val p3 = """(?i)\btblproperties\b\s+\((.*)\)""".r
         createTableSQL = p3.replaceFirstIn(createTableSQL, "")
 
-        //remove the store format
-        val p4 = """(?i)\bstored\b\s+\bas\b\s+([a-z]+)""".r
+        //remove the lifecycle
+        val p4 = """(?i)\blifecycle\b\s+[1-9]+""".r
         createTableSQL = p4.replaceFirstIn(createTableSQL, "")
 
-        //remove the location
-        val p5 = """(?i)\blocation\b\s+'(.*)'""".r
+        //remove the store format
+        val p5 = """(?i)\bstored\b\s+\bas\b\s+([a-z]+)""".r
         createTableSQL = p5.replaceFirstIn(createTableSQL, "")
+
+        //remove the location
+        val p6 = """(?i)\blocation\b\s+'(.*)'""".r
+        createTableSQL = p6.replaceFirstIn(createTableSQL, "")
 
         //add stored format, location, and snappy
         createTableSQL +=
           s""" stored as parquet
-             | location '${conf.s3Location}/${conf.database}/${conf.tableName}'
+             | location '${conf.hiveInS3Path}/${conf.database}/${conf.tableName}'
              | tblproperties('parquet.compression' = 'SNAPPY')""".stripMargin
 
-        val p6 = """(?i)\bpartitioned\b\s+by\s+\((.*)\)""".r
-        val partitionStr = p6.findFirstMatchIn(createTableSQL).getOrElse("").toString
+        val p7 = """(?i)\bpartitioned\b\s+by\s+\((.*)\)""".r
+        val partitionStr = p7.findFirstMatchIn(createTableSQL).getOrElse("").toString
         var partitionColumnStr = ""
         if (partitionStr != "") {
             val partitionColumnArr = partitionStr.substring(partitionStr.indexOf("(")+1, partitionStr.indexOf(")")).split(",")
             partitionColumnStr = (for(partitionColumn <- partitionColumnArr) yield partitionColumn.trim.split(" ")(0).trim).mkString(",")
         }
 
-        (createTableSQL, partitionColumnStr)
+        (createTableSQL, partitionColumnStr, isExternal)
     }
 
     def createAndInsertExternalTable(conf: DBConfig): Unit = {
-        var (createTableSQL, partitionColumns) = getCreateTableSQL(conf)
+        var (createTableSQL, partitionColumns, isExternal) = getCreateTableSQL(conf)
+
+        //ignore external table
+        if(isExternal) return
 
         //add external postfix to table name
         val p1 = """(?i)create\s+external\s+table\s+if\s+not\s+exists\s+([a-z0-9\._-]+)\s*\(""".r
@@ -258,12 +270,24 @@ class MaxComputeUtil extends DBEngineUtil {
         stmt.execute(createTableSQL)
 
         stmt.execute("set odps.sql.allow.fullscan=true")
+        stmt.execute("set odps.sql.hive.compatible=true")
+        stmt.execute("set odps.sql.unstructured.oss.commit.mode=true")
+        stmt.execute("set odps.sql.unstructured.file.pattern.black.list=.*_SUCCESS$,.*.hive_staging.*")
+
+        //check the filter, the filter is dh=YYYYMMDDHI, we convert it to dt=YYYYMMDD for table use dt instead of dh as partition
+        val filter =
+            if(partitionColumns.indexOf("dh") > 0)
+                conf.ossFilter
+            else if(partitionColumns.indexOf("dt") > 0)
+                "dt=" + conf.ossFilter.substring(3, 11)
+            else
+                "1=1"
 
         val insertSQL =
             if (partitionColumns != None && partitionColumns != "")
-                s"""insert into ${conf.database}.${conf.tableName}_external partition($partitionColumns) select * from ${conf.database}.${conf.tableName} where ${conf.ossFilter}"""
+                s"""insert overwrite ${conf.database}.${conf.tableName}_external partition($partitionColumns) select * from ${conf.database}.${conf.tableName} where ${filter}"""
             else
-                s"""insert into ${conf.database}.${conf.tableName}_external select * from {conf.database}.${conf.tableName} where ${conf.ossFilter}"""
+                s"""insert overwrite ${conf.database}.${conf.tableName}_external select * from {conf.database}.${conf.tableName}"""
         logger.info(s"******* $insertSQL")
         stmt.execute(insertSQL)
 
