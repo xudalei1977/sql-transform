@@ -11,7 +11,7 @@ object MaxCompute2Hive {
 
   def main(args: Array[String]): Unit = {
 
-    logger.info("export maxcompute data to oss ...")
+    logger.info("Migration MaxCompute to Hive ...")
     val params = DBConfig.parseConfig(MaxCompute2Hive, args)
     println(s"params := ${params.toString}")
 
@@ -30,7 +30,7 @@ object MaxCompute2Hive {
 
     /** create table sql */
     allTable.foreach(tableName => {
-      val (createTableString, partitionColumns, isExternal) = maxcomputeUtil2.getTableDDL(tableName, params.hiveInS3Path)
+      val (createTableString, nativeColumns, partitionColumns, isExternal) = maxcomputeUtil2.getTableDDL(tableName, params.hiveDatabase, params.hiveInS3Path)
       val file = new File(ddlDir.toString + "/" + tableName + ".sql")
       write2File(createTableString, file)
     })
@@ -38,7 +38,7 @@ object MaxCompute2Hive {
     /** create external table and insert data, now the data is in OSS. */
     allTable.foreach(tableName => {
       try{
-        val (externalTableSqL, isExternal) = maxcomputeUtil2.createAndInsertExternalTable(tableName, params.ossUrl, params.ossFilter)
+        val (externalTableSqL, isExternal) = maxcomputeUtil2.createAndInsertExternalTable(tableName, params.hiveDatabase, params.ossUrl, params.ossFilter)
         val file = new File(externalTableDir.toString + "/" + tableName + ".sql")
         if(! isExternal)
           write2File(externalTableSqL, file)
@@ -51,12 +51,6 @@ object MaxCompute2Hive {
   private def write2File(ddl: String, file: File): Unit = {
     val bw = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(file), "UTF-8"))
 
-    bw.write(s"---------- set variable ----------\n")
-    bw.write("set odps.sql.allow.fullscan=true;\n")
-    bw.write("set odps.sql.hive.compatible=true;\n")
-    bw.write("set odps.sql.unstructured.oss.commit.mode=true;\n")
-    bw.write("set odps.sql.unstructured.file.pattern.black.list=.*_SUCCESS$,.*.hive_staging.*;\n\n")
-
     bw.write(ddl)
     bw.write("\n")
     bw.close()
@@ -66,8 +60,8 @@ object MaxCompute2Hive {
 //export ALI_CLOUD_ACCESS_KEY_ID=<Your AK>
 //export ALI_CLOUD_ACCESS_KEY_SECRET=<Your SK>
 //export CLASSPATH=./sql-transform-1.0-SNAPSHOT-jar-with-dependencies.jar:./scopt_2.12-4.0.0-RC2.jar
-//scala com.aws.analytics.MaxCompute2OSS \
-//-f /home/ec2-user/20240403/ \
-//-g maxcompute -d mc_2_hive -r cn-hangzhou \
+//scala com.aws.analytics.MaxCompute2Hive \
+//-f /home/ecs-user/20241212_ddl/ -F /home/ecs-user/20241212_ext \
+//-g maxcompute -d dalei_mc_demo -r cn-shenzhen \
 //-l oss://oss-cn-hangzhou-internal.aliyuncs.com/xudalei-demo/external \
-//-e "dh>='2024031115' and dh<='2024031820'"
+//-D dev -o s3://dalei-demo/tmp

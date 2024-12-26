@@ -20,7 +20,8 @@ case class DBConfig(ddlDir: String = "",
                     hiveHost:String = "",
                     hiveDatabase:String = "",
                     hivePartitionValue:String = "",
-                    hiveInS3Path: String = ""
+                    hiveInS3Path: String = "",
+                    hiveInHDFSPath: String = ""
                    )
 
 object DBConfig {
@@ -32,13 +33,17 @@ object DBConfig {
       opt[String]('g', "sourceDBEngine").optional().action((x, config) => config.copy(sourceDBEngine = x)).text("source database engine, e.g. adb_mysql, adb_pg")
       opt[String]('f', "ddlDir").optional().action((x, config) => config.copy(ddlDir = x)).text("file name to contain the create table sql")
       opt[String]('F', "externalTableDir").optional().action((x, config) => config.copy(externalTableDir = x)).text("file name to contain the create table sql")
+      opt[String]('q', "sqlDir").optional().action((x, config) => config.copy(sqlDir = x)).text("file name to contain the create table sql")
       opt[String]('h', "hostname").optional().action((x, config) => config.copy(hostname = x)).text("source database hostname")
       opt[Int]('p', "portNo").optional().action((x, config) => config.copy(portNo = x)).text("source database port no.")
-      opt[String]('d', "database").required().action((x, config) => config.copy(database = x)).text("source database name")
+      opt[String]('d', "database").optional().action((x, config) => config.copy(database = x)).text("source database name")
       opt[String]('s', "schema").optional().action((x, config) => config.copy(schema = x)).text("schema in source database")
+      opt[String]('t', "tableName").optional().action((x, config) => config.copy(tableName = x)).text("tableName")
       opt[String]('u', "userName").optional().action((x, config) => config.copy(userName = x)).text("user name to login source database")
       opt[String]('w', "password").optional().action((x, config) => config.copy(password = x)).text("password to login source database")
       opt[String]('r', "mcRegion").optional().action((x, config) => config.copy(mcRegion = x)).text("region of the maxcompute")
+      opt[String]('H', "hiveHost").optional().action((x, config) => config.copy(hiveHost = x)).text("hiveHost")
+      opt[String]('D', "hiveDatabase").optional().action((x, config) => config.copy(hiveDatabase = x)).text("hiveDatabase")
       opt[String]('o', "hiveInS3Path").optional().action((x, config) => config.copy(hiveInS3Path = x)).text("target table S3 location")
       opt[String]('e', "ossFilter").optional().action((x, config) => config.copy(ossFilter = x)).text("oss filter")
 
@@ -53,12 +58,11 @@ object DBConfig {
           opt[String]('f', "ossFormat").optional().action((x, config) => config.copy(ossFormat = x)).text("oss external table format")
 
         case "MySQL2Hive" =>
-          opt[String]('H', "hiveHost").optional().action((x, config) => config.copy(hiveHost = x)).text("hiveHost")
-          opt[String]('D', "hiveDatabase").optional().action((x, config) => config.copy(hiveDatabase = x)).text("hiveDatabase")
           opt[String]('P', "hivePartitionValue").optional().action((x, config) => config.copy(hivePartitionValue = x)).text("hivePartitionValue")
-          opt[String]('S', "hiveInS3Path").optional().action((x, config) => config.copy(hiveInS3Path = x)).text("hive table path")
 
-         case "Hologres2Redshift" =>
+        case "Hive2Hive" =>
+          opt[String]('H', "hiveHost").optional().action((x, config) => config.copy(hiveHost = x)).text("hiveHost")
+          opt[String]('O', "hiveInHDFSPath").optional().action((x, config) => config.copy(hiveInHDFSPath = x)).text("hive in HDFS location")
       }
     }
 

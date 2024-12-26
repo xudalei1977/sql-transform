@@ -127,7 +127,7 @@ class MySQLUtil extends DBEngineUtil {
     val mysqlToHiveTypeConverter: Map[String, String] = {
         Map(
             "TIME" -> "STRING",
-            "DATETIME" -> "TIMESTAMP",
+            "DATETIME" -> "STRING",
             "YEAR" -> "INT",
             "CHAR" -> "STRING",
             "VARCHAR" -> "STRING",

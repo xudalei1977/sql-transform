@@ -15,20 +15,20 @@ import java.util.{HashMap, List, Properties}
 import scala.collection.immutable.Seq
 
 class MaxcomputeUtil2(region: String, projectName: String) {
-    private val logger: Logger = LoggerFactory.getLogger("MaxcomputeUtil")
+    private val logger: Logger = LoggerFactory.getLogger("MaxcomputeUtil2")
     private val MaxCompute_CLASS_NAME = "com.aliyun.odps.jdbc.OdpsDriver"
     private val accessID = System.getenv("ALI_CLOUD_ACCESS_KEY_ID")
     private val accessKey = System.getenv("ALI_CLOUD_ACCESS_KEY_SECRET")
+    private val endpoint = s"http://service.$region-vpc.maxcompute.aliyun-inc.com/api?project=$projectName&useProjectTimeZone=true"
+    //private val endpoint = s"http://service.$region.maxcompute.aliyun.com/api?project=$projectName&useProjectTimeZone=true"
 
-    private val config = new Config().setAccessKeyId(accessID).setAccessKeySecret(accessKey).setEndpoint(s"maxcompute.$region.aliyuncs.com")
+    // the endpoint for public and vpc are different.
+    private val config = new Config().setAccessKeyId(accessID).setAccessKeySecret(accessKey).setEndpoint(s"maxcompute-vpc.$region.aliyuncs.com")
+    //private val config = new Config().setAccessKeyId(accessID).setAccessKeySecret(accessKey).setEndpoint(s"maxcompute.$region.aliyuncs.com")
     private val client: Client = new Client(config)
 
-    def getJDBCUrl(): String = {
-        s"jdbc:odps:http://service.$region.maxcompute.aliyun.com/api?project=$projectName&useProjectTimeZone=true;"
-    }
-
     def getJDBCUrl(conf: DBConfig): String = {
-        s"jdbc:odps:http://service.$region.maxcompute.aliyun.com/api?project=$projectName&useProjectTimeZone=true;"
+        s"jdbc:odps:$endpoint"
     }
 
     def queryByJDBC(conf: DBConfig, sql: String) : Seq[String] = {
@@ -55,13 +55,6 @@ class MaxcomputeUtil2(region: String, projectName: String) {
         }
     }
 
-    def getConnection(): Connection = {
-        val connectionString = getJDBCUrl()
-        println(s"connection string: = ${connectionString}" )
-        Class.forName(MaxCompute_CLASS_NAME)
-        DriverManager.getConnection(connectionString, accessID, accessKey)
-    }
-
     def getConnection(conf: DBConfig): Connection = {
         val connectionString = getJDBCUrl(conf)
         println(s"connection string: = ${connectionString}" )
@@ -79,13 +72,13 @@ class MaxcomputeUtil2(region: String, projectName: String) {
         listTablesResponse.getBody.getData.getTables
     }
 
-    def getTableDDL(tableName: String, s3Location: String): (String, String, Boolean) = {
+    def getTableDDL(tableName: String, hiveDatabase: String, s3Location: String): (String, String, String, Boolean) = {
         val runtime = new RuntimeOptions()
         val getTableInfoRequest = new GetTableInfoRequest()
         val headers = new HashMap[String, String]
         val getTableInfoResponse = client.getTableInfoWithOptions(projectName, tableName, getTableInfoRequest, headers, runtime)
         var createTableSQL = getTableInfoResponse.getBody.getData.createTableDDL
-        println(s"****** $createTableSQL")
+        println(s"****** orgin createTableSQL : $createTableSQL")
 
         //drop last ";"
         createTableSQL = createTableSQL.trim
@@ -96,8 +89,11 @@ class MaxcomputeUtil2(region: String, projectName: String) {
         val p1 = """(?i)\bcreate\b\s+\bexternal\b\s+\btable\b\s+""".r
         val isExternal = if(p1.findFirstMatchIn(createTableSQL).getOrElse("").toString.equals("")) false else true
 
-        //replace datetime to date
-        createTableSQL = createTableSQL.replaceAll(s"(?i)datetime", "date")
+        //replace projectName to hiveDatabase
+        createTableSQL = createTableSQL.replaceAll(s"(?i)${projectName}.", s"${hiveDatabase}.")
+
+        //replace datetime to timestamp
+        createTableSQL = createTableSQL.replaceAll(s"(?i)datetime", "timestamp")
 
         //add external table
         val p2 = """(?i)\bcreate\b\s+\btable\b\s+""".r
@@ -116,7 +112,7 @@ class MaxcomputeUtil2(region: String, projectName: String) {
 
         //get the lifecycle
         val p5 = """(?i)\blifecycle\b\s+([+-]?[0-9]+)""".r
-        val lifecycle = (for (m <- p5.findFirstMatchIn(createTableSQL)) yield m.group(1)).getOrElse("3650")
+        val lifecycle = (for (m <- p5.findFirstMatchIn(createTableSQL)) yield m.group(1)).getOrElse("366")
         createTableSQL = p5.replaceFirstIn(createTableSQL, "")
 
         //remove the store format
@@ -127,32 +123,45 @@ class MaxcomputeUtil2(region: String, projectName: String) {
         val p7 = """(?i)\blocation\b\s+'(.*)'""".r
         createTableSQL = p7.replaceFirstIn(createTableSQL, "")
 
-        //add stored format, location, and snappy
+        //remove the partition
+        val p8 = """(?i)\bpartitioned\b\s+by\b\s+\((.*)\)""".r
+        createTableSQL = p8.replaceFirstIn(createTableSQL, "")
+
+        //process the partition columns
+        import scala.collection.JavaConverters._
+        val nativeColumnsList:List[GetTableInfoResponseBody.GetTableInfoResponseBodyDataNativeColumns] = getTableInfoResponse.getBody.getData.getNativeColumns
+        val nativeColumns = nativeColumnsList.asScala.toList.map(t=>t.getName).mkString(",")
+
+        val partitionColumnList:List[GetTableInfoResponseBody.GetTableInfoResponseBodyDataPartitionColumns] = getTableInfoResponse.getBody.getData.getPartitionColumns
+
+        val partitionColumns =
+            if (partitionColumnList != null)
+                partitionColumnList.asScala.toList.map(t=>t.getName.toLowerCase).filter(t => t == "ds" || t == "data_ds" || t == "data_yyyymm").map(t => t + " string").mkString(", ")
+            else
+                ""
+        logger.info(s"******* partitionColumns is : $partitionColumns")
+
+        //add stored format, location, partition, and snappy
+        if (partitionColumns != "")
+            createTableSQL += s" partitioned by ($partitionColumns)  "
+
         createTableSQL +=
           s""" stored as parquet
-             | location '$s3Location/$projectName/$tableName'
+             | location '$s3Location/$hiveDatabase/$tableName'
              | tblproperties('comment' = '$comment',
              | 'lifecycle' = '$lifecycle',
              | 'owner' = '',
              | 'parquet.compression' = 'SNAPPY');""".stripMargin
 
-        //process the partition columns
-        import scala.collection.JavaConverters._
-        val partitionColumnList:List[GetTableInfoResponseBody.GetTableInfoResponseBodyDataPartitionColumns] = getTableInfoResponse.getBody.getData.getPartitionColumns
-        val partitionColumns =
-            if (partitionColumnList != null)
-                partitionColumnList.asScala.toList.map(t=>t.getName).mkString(",")
-            else
-                ""
         if (partitionColumns != "")
-            createTableSQL += s"\n\n msck repair table $projectName.$tableName ; \n"
+            createTableSQL += s"\n\n msck repair table $hiveDatabase.$tableName ; \n"
 
-        (createTableSQL, partitionColumns, isExternal)
+        (createTableSQL, nativeColumns, partitionColumns, isExternal)
     }
 
     def unloadToOSS(tableName: String, ossUrl: String): Unit = {
         try {
-            val conn = getConnection()
+            val conn = getConnection(null)
             val stmt = conn.createStatement
             stmt.execute("set odps.stage.mapper.split.size=256")
             stmt.execute("set odps.sql.allow.fullscan=true")
@@ -175,9 +184,34 @@ class MaxcomputeUtil2(region: String, projectName: String) {
         }
     }
 
-    def createAndInsertExternalTable(tableName: String, ossUrl: String, ossFilter: String): (String, Boolean) = {
+    def createAndInsertExternalTable(tableName: String, hiveDatabase: String, ossUrl: String, ossFilter: String): (String, Boolean) = {
 
-        var (createTableSQL, partitionColumns, isExternal) = getTableDDL(tableName, ossUrl)
+        var (createTableSQL, nativeColumns, partitionColumns, isExternal) = getTableDDL(tableName, hiveDatabase, ossUrl)
+
+        //ignore external table
+        if(isExternal)
+            return (s"---------- ignore external table ${tableName} ----------\n", isExternal)
+
+        //add external postfix to table name
+        val p1 = """(?i)create\s+external\s+table\s+if\s+not\s+exists\s+([a-z0-9\._-]+)\s*\(""".r
+        createTableSQL = p1.replaceFirstIn(createTableSQL, s"create external table if not exists $projectName.${tableName}_external ( ")
+        logger.info(s"******* $createTableSQL")
+
+        var insertSQL = ""
+
+        if (partitionColumns != None && partitionColumns != "")
+            insertSQL += s"""insert overwrite table $projectName.${tableName}_external partition($partitionColumns) select $nativeColumns , $partitionColumns from $projectName.${tableName};\n"""
+        else
+            insertSQL += s"""insert overwrite table $projectName.${tableName}_external select * from $projectName.${tableName};\n"""
+
+        logger.info(s"******* successful execution sql : $insertSQL")
+
+        (createTableSQL + "\n\n" + insertSQL, isExternal)
+    }
+
+    def createAndInsertExternalTable4Transion(tableName: String, hiveDatabase: String, ossUrl: String, ossFilter: String): (String, Boolean) = {
+
+        var (createTableSQL, nativeColumns, partitionColumns, isExternal) = getTableDDL(tableName, hiveDatabase, ossUrl)
 
         //ignore external table
         if(isExternal)
@@ -237,7 +271,6 @@ class MaxcomputeUtil2(region: String, projectName: String) {
 
         (createTableSQL + "\n\n" + insertSQL, isExternal)
     }
-
 
     /****
      * generate all days between start and end day.

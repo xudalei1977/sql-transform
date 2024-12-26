@@ -34,7 +34,10 @@ object MySQL2Hive {
                           password = params.password,
                           database = params.database,
                           schema = params.schema,
-                          tableName = tableName)
+                          tableName = tableName,
+                          hiveDatabase = params.hiveDatabase,
+                          hivePartitionValue = params.hivePartitionValue,
+                          hiveInS3Path = params.hiveInS3Path)
 
       val tableDetails = mySQLUtil.getTableDetails(conf, internalConfig = InternalConfig())(false)
       val (createTableString, partitionOpt) = hiveUtil.getCreateTableString(tableDetails, conf)
@@ -48,19 +51,19 @@ object MySQL2Hive {
 
     /** sql script transform from mysql to hive
      *  currently, only provide the Date function transform, will add more by regex, and test GenAI to transform. */
-    new java.io.File(params.sqlDir).listFiles.filter(_.getName.endsWith(".sql")).foreach( file => {
-      val source = scala.io.Source.fromFile(params.sqlDir + "/" + file.getName)
-      val sql = try source.mkString finally source.close()
-
-      println("======== old sql:")
-      println(sql)
-      val newSql = mySQLUtil.transferDateFunction(sql)
-      println("======== new sql:")
-      println(newSql)
-
-      val newFile = new File(params.sqlDir + "/new_" + file.getName)
-      write2File(newSql, newFile)
-    })
+//    new java.io.File(params.sqlDir).listFiles.filter(_.getName.endsWith(".sql")).foreach( file => {
+//      val source = scala.io.Source.fromFile(params.sqlDir + "/" + file.getName)
+//      val sql = try source.mkString finally source.close()
+//
+//      println("======== old sql:")
+//      println(sql)
+//      val newSql = mySQLUtil.transferDateFunction(sql)
+//      println("======== new sql:")
+//      println(newSql)
+//
+//      val newFile = new File(params.sqlDir + "/new_" + file.getName)
+//      write2File(newSql, newFile)
+//    })
   }
 
   private def write2File(ddl: String, file: File): Unit = {
@@ -72,8 +75,11 @@ object MySQL2Hive {
 
 }
 
-// export CLASSPATH=./sql-transform-1.0-SNAPSHOT-jar-with-dependencies.jar:./scopt_2.12-4.0.0-RC2.jar
-// scala com.aws.analytics.CommonSQL -g adb-pg -r /home/ec2-user/tpch_query
-//  -e prod -h emr-workshop-mysql8.chl9yxs6uftz.us-east-1.rds.amazonaws.com \
-//  -d salesdb -t demo_partition -u admin -p ******* -s s3a://dalei-demo/hive -r "'2015-02-16','2015-04-13'" -n 20 \
-//  -H ip-10-0-0-139.ec2.internal -D dev -P 2024-10-16 -S s3a://dalei-demo/hive
+// export CLASSPATH=./sql-transform-1.0-SNAPSHOT-jar-with-dependencies.jar:./scopt_2.12-4.0.0-RC2.jar:./mysql-connector-java-8.0.16.jar
+// scala com.aws.analytics.MySQL2Hive \
+//  -f /home/ec2-user/create_table -h emr-workshop-mysql8.chl9yxs6uftz.us-east-1.rds.amazonaws.com \
+//  -d salesdb1 -u admin -w HCserv1ce \
+//  -D dev -S s3://dalei-demo/hive
+
+
+

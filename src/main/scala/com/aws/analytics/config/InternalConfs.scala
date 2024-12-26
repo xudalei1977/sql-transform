@@ -15,6 +15,20 @@ private[analytics] object InternalConfs {
                |   Java Type: $javaType
                |}""".stripMargin
         }
+
+        override def equals(obj: Any): Boolean = {
+            obj match {
+                case d: DBField => d.fieldName == fieldName
+                case _ => false
+            }
+        }
+
+        override def hashCode(): Int = {
+            val prime = 31
+            var result = 1
+            result = prime * result + fieldName.hashCode()
+            result
+        }
     }
 
     case class TableDetails(validFields: Seq[DBField],
