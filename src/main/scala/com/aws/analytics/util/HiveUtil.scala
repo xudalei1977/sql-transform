@@ -122,8 +122,13 @@ class HiveUtil() extends DBEngineUtil {
     def getCreateTableString(tableName: String, conf: DBConfig): String = {
         val conn = getConnection(conf)
         val seq = queryByJDBC(conn, s"show create table ${conf.hiveDatabase}.$tableName" )
-        val createTableDDL = seq.mkString(" \n").replaceAll(conf.hiveInHDFSPath, conf.hiveInS3Path)
+        var createTableDDL = seq.mkString(" \n").replaceAll(conf.hiveInHDFSPath, conf.hiveInS3Path)
         conn.close()
+
+        createTableDDL = createTableDDL.replaceAll("ROW FORMAT SERDE", "ROW FORMAT DELIMITED FIELDS TERMINATED BY '\\001'")
+        createTableDDL = createTableDDL.replaceAll("STORED AS INPUTFORMAT", "STORED AS TEXTFILE")
+
+        createTableDDL += s";\n msck repair table ${tableName};"
 
         createTableDDL
     }
